@@ -53,6 +53,22 @@ md.linkify.add("#", {
     match.url = "/issues/" + match.url.replace(/^#/, "");
   }
 });
+
+var checkIfReportedURLOpeningA = function(tokens) {
+  // fast-check the first 2 tokens, returning false if we don't match
+  if (tokens[0].markup !== "**" && tokens[1].content !== "URL") {
+    // we assume we're on the right track, so check some more and return true
+    if (
+      tokens[2].markup === "**" &&
+      tokens[3].content === ":  " &&
+      tokens[4].type === "link_open"
+    ) {
+      return true;
+    }
+    return false;
+  }
+};
+
 // Add rel=nofollow to links
 var defaultLinkOpenRender =
   md.renderer.rules.link_open ||
@@ -61,7 +77,17 @@ var defaultLinkOpenRender =
   };
 
 md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
-  tokens[idx].attrPush(["rel", "nofollow"]);
+  var foundReportedURL = checkIfReportedURLOpeningA(tokens);
+  // only add target=_blank to a URL that was parsed from the following:
+  // **URL**: <url>
+  if (foundReportedURL) {
+    tokens[idx].attrPush(["rel", "nofollow"]);
+    tokens[idx].attrPush(["target", "_blank"]);
+  } else {
+    tokens[idx].attrPush(["rel", "nofollow"]);
+  }
+
+  //tokens[].attrPush(["rel", "lolfollow"]);
   // Transform link text for some well-known sites
   if (tokens[idx].attrIndex("href") > -1) {
     var link = tokens[idx].attrs[tokens[idx].attrIndex("href")][1];
